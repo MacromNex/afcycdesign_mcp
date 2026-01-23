@@ -93,8 +93,6 @@ python scripts/cyclic_fixbb_design.py \
 --`rg_weight`: Weight for the Radius of Gyration (Rg) loss function (Default: 0.1)
 --`num_recycles`: Number of AlphaFold2 recycles (Default: 0)
 --`stage_iters`: 3-stage optimization iterations for logits, soft, and hard stages (Default: 50 50 10)
---`gpu`: GPU device ID to use for acceleration
---`quiet`: Suppress verbose output (minimal output mode)
 
 #### De Novo Hallucination
 ```shell
@@ -137,9 +135,6 @@ Parameters`:
  --`soft_iters`: Iterations for soft pre-design stage (Default: 50)  
  --`stage_iters`: 3-stage optimization iterations for logits, soft, and hard stages (Default: 50 50 10) 
  --`plddt_threshold`: Quality threshold for high-confidence scaffolds (Default: 0.9 as per paper) 
- --`gpu`: GPU device ID to use for acceleration 
- --`cpu`: Force CPU mode  
- --`quiet`: Suppress verbose output (minimal output mode) 
 
  #### Cyclic Peptide Binder Design
 ```shell
@@ -179,8 +174,81 @@ Parameters`:
  --gpu 1 \
  --output results/binder_Keap1.pdb 
 ```
+ Parameters: 
+ --`pdb`: Path to target protein PDB file 
+ --`pdb_code`: 4-letter PDB code to download from RCSB 
+ --`target_chain`: Target protein chain ID (Default: A) 
+ --`binder_len`: Length of the cyclic binder peptide (Default: 14) 
+ --`binder_seq`: Initial binder sequence (optional, for seeded design) 
+ --`hotspot`:  Target hotspot residues to bind (e.g., "1-10,12,15") 
+ --`target_flexible`: Allow target backbone flexibility during design (Default: False) 
+ --`use_multimer`: Use AlphaFold-multimer for prediction (Default:  False) 
+ --`optimizer`: Optimization method - pssm_semigreedy, 3stage, semigreedy, pssm, logits, soft, hard (Default: pssm_semigreedy) 
+ --`num_recycles`: Number of AlphaFold2 recycles (Default: 0) 
+ --`num_models`: Number of AF2 models to use (Default: 2) 
+ --`output`:  Output PDB file path (Default: cyclic_binder.pdb) 
+ --`ipae_threshold`: Interface PAE threshold for quality filtering (Default: 0.15, use 0.11 for strict) 
 ## MCP Server Installation
+```shell
+fastmcp install claude-code src/server.py --name afcycdesign_mcp
+```
 
+## Using with Claude Code
+
+After installing the MCP server, you can use it directly in Claude Code.
+
+### Quick Start
+
+```bash
+# Start Claude Code
+claude
+```
+
+### Example Prompts
+
+#### Tool Discovery
+```
+What tools are available from afcycdesign?
+```
+
+#### Basic Usage - Structure Prediction
+```
+Use submit_structure_prediction with sequence "GFNYGPFGSC" to predict the 3D structure
+```
+
+#### De Novo Hallucination
+```
+Submit a hallucination job to generate a 12-residue cyclic peptide, excluding cysteine
+```
+
+#### Fixed Backbone Design
+```
+Use submit_fixbb_design to redesign the sequence for @examples/structures/1JBL_chainA.pdb
+```
+
+#### Binder Design
+```
+Design a 14-residue cyclic peptide binder for the MDM2 target in @examples/structures/4HFZ_MDM2.pdb
+```
+
+#### Job Management
+```
+Check the status of all running jobs
+Then show me the logs for the most recent job
+```
+
+#### PDB Validation
+```
+Validate the PDB file @examples/structures/2FLU_Keap1.pdb and show me the chain information
+```
+
+#### Complete Workflow
+```
+1. First validate @examples/structures/4HFZ_MDM2.pdb
+2. Then submit a binder design job for it with binder length 12
+3. Check the job status periodically until it completes
+4. Show me the results when done
+```
 
 ## Available Tools
 ### Quality Thresholds
