@@ -5,6 +5,7 @@ Provides tools for cyclic peptide design based on AlphaFold:
 2. Fixed Backbone Design - Design sequence for given backbone structure
 3. Hallucination - De novo generation of structure and sequence
 4. Binder Design - Design cyclic peptides that bind to target proteins
+5. Complex Prediction - Predict cyclic peptide + target protein complex structure
 
 All long-running tasks use async job submission with FIFO queue management.
 """
@@ -414,6 +415,95 @@ def submit_binder_design(
 
 
 # ==============================================================================
+# Tool 5: Cyclic Peptide + Target Complex Structure Prediction
+# ==============================================================================
+
+@mcp.tool()
+def submit_complex_prediction(
+    target_pdb: str,
+    peptide_sequence: str,
+    output_file: Optional[str] = None,
+    target_chain: str = "A",
+    hotspot: Optional[str] = None,
+    target_flexible: bool = True,
+    use_multimer: bool = True,
+    num_recycles: int = 6,
+    num_models: int = 2,
+    job_name: Optional[str] = None
+) -> dict:
+    """
+    Submit a complex structure prediction job for a cyclic peptide bound to a target protein.
+
+    Predicts the 3D structure of a known cyclic peptide sequence in complex with a
+    target protein using AlphaFold forward pass (no sequence optimization). This is
+    useful for evaluating how a given peptide binds to a target, validating designed
+    sequences, or screening candidate binders.
+
+    Defaults follow the RFpeptides paper validation settings:
+    - use_multimer=True for simultaneous peptide+target prediction
+    - use_initial_guess=True (always enabled internally) to use target coords as starting point
+    - target_flexible=True to let AF predict entire complex conformation
+
+    Unlike submit_binder_design which optimizes a new sequence, this tool takes a
+    fixed peptide sequence and predicts the complex structure with cyclic offset
+    applied only to the peptide chain.
+
+    Args:
+        target_pdb: Path to target protein PDB file (or 4-letter PDB code to download)
+        peptide_sequence: Amino acid sequence of the cyclic peptide (1-letter codes, 5-50 residues)
+        output_file: Optional output PDB file path for predicted complex
+        target_chain: Target protein chain ID (default: "A")
+        hotspot: Restrict binding to specific positions (e.g., "1-10,12,15")
+        target_flexible: Allow target backbone flexibility (default: True, paper setting)
+        use_multimer: Use AlphaFold-multimer (default: True, paper setting)
+        num_recycles: Number of AlphaFold recycles (default: 6, higher for prediction accuracy)
+        num_models: Number of models to use (default: 2)
+        job_name: Optional name for job tracking
+
+    Returns:
+        Dictionary with job_id for tracking. Use:
+        - get_job_status(job_id) to check progress
+        - get_job_result(job_id) to get output PDB and metrics when completed
+        - get_job_log(job_id) to see execution logs
+
+    Quality metrics in results:
+        - pLDDT > 0.7: High confidence prediction
+        - iPAE < 0.15: Good interface prediction
+        - iPAE < 0.11: Strong interface prediction
+    """
+    script_path = str(SCRIPTS_DIR / "cycpep_target_complex_pred.py")
+
+    args = {
+        "pdb": target_pdb,
+        "target_chain": target_chain,
+        "peptide_seq": peptide_sequence.upper().strip(),
+        "num_recycles": num_recycles,
+        "num_models": num_models,
+        "quiet": True
+    }
+
+    if output_file:
+        args["output"] = output_file
+    if hotspot:
+        args["hotspot"] = hotspot
+    # Defaults are True (paper settings); pass --no_* flags when user disables them
+    if target_flexible:
+        args["target_flexible"] = True
+    else:
+        args["no_target_flexible"] = True
+    if use_multimer:
+        args["use_multimer"] = True
+    else:
+        args["no_multimer"] = True
+
+    return job_manager.submit_job(
+        script_path=script_path,
+        args=args,
+        job_name=job_name or f"complex_pred_{len(peptide_sequence)}mer"
+    )
+
+
+# ==============================================================================
 # Utility Tools
 # ==============================================================================
 
@@ -505,6 +595,10 @@ def get_server_info() -> dict:
                 {
                     "name": "submit_binder_design",
                     "description": "Design cyclic peptides that bind to target proteins"
+                },
+                {
+                    "name": "submit_complex_prediction",
+                    "description": "Predict cyclic peptide + target protein complex structure"
                 }
             ],
             "job_management": [
