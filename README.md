@@ -23,6 +23,7 @@ This MCP server provides computational tools for cyclic peptide structure predic
 | `submit_fixbb_design` | Redesign amino acid sequence for a given cyclic backbone structure using distogram-based optimization |
 | `submit_hallucination` | De novo generation of both cyclic peptide structure and sequence from scratch |
 | `submit_binder_design` | Design cyclic peptides that bind to target protein structures |
+| `submit_complex_prediction` | Predict 3D structure of a cyclic peptide bound to a target protein (RFpeptides paper defaults: multimer, initial_guess, flexible target) |
 
 #### Job Management Tools
 | Tool | Description |
@@ -203,7 +204,64 @@ Parameters`:
  --`num_recycles`: Number of AlphaFold2 recycles (Default: 0) 
  --`num_models`: Number of AF2 models to use (Default: 2) 
  --`output`:  Output PDB file path (Default: cyclic_binder.pdb) 
- --`ipae_threshold`: Interface PAE threshold for quality filtering (Default: 0.15, use 0.11 for strict) 
+ --`ipae_threshold`: Interface PAE threshold for quality filtering (Default: 0.15, use 0.11 for strict)
+
+#### Complex Structure Prediction
+
+Predict how a known cyclic peptide binds to a target protein. Defaults follow the RFpeptides paper validation settings (`use_multimer=True`, `use_initial_guess=True`, `target_flexible=True`).
+
+```shell
+# Basic complex prediction (uses RFpeptides paper defaults)
+python scripts/cycpep_target_complex_pred.py \
+    --pdb 4HFZ \
+    --target_chain A \
+    --peptide_seq "FSDLWKLLPEN" \
+    --gpu 0 \
+    --output results/complex_4HFZ.pdb
+
+# With hotspot residues
+python scripts/cycpep_target_complex_pred.py \
+    --pdb 2FLU \
+    --target_chain A \
+    --peptide_seq "DEETGE" \
+    --hotspot "20-30" \
+    --gpu 0 \
+    --output results/complex_keap1.pdb
+
+# Disable multimer and flexible target (non-default)
+python scripts/cycpep_target_complex_pred.py \
+    --pdb 4HFZ \
+    --target_chain A \
+    --peptide_seq "FSDLWKLLPEN" \
+    --no_multimer --no_target_flexible \
+    --gpu 0 \
+    --output results/complex_4HFZ_nomulti.pdb
+
+# Batch prediction for multiple sequences
+python scripts/cycpep_target_complex_pred.py \
+    --pdb 4HFZ \
+    --target_chain A \
+    --peptide_seqs "FSDLWKLLPEN,FSDLWKLLPEA,FSDLWKLLPES" \
+    --output_dir results/ --save_json
+```
+
+**Parameters:**
+- `--pdb`: Path to target protein PDB file (or 4-letter PDB code to download)
+- `--target_chain`: Target protein chain ID (Default: A)
+- `--peptide_seq`: Cyclic peptide amino acid sequence
+- `--peptide_seqs`: Comma-separated sequences for batch prediction
+- `--hotspot`: Target hotspot residues (e.g., "1-10,12,15")
+- `--target_flexible`: Allow target backbone flexibility (Default: True, paper setting)
+- `--no_target_flexible`: Disable target backbone flexibility
+- `--use_multimer`: Use AlphaFold-multimer (Default: True, paper setting)
+- `--no_multimer`: Disable AlphaFold-multimer
+- `--num_recycles`: Number of AF2 recycles (Default: 6)
+- `--num_models`: Number of models to use (Default: 2)
+- `--output`: Output PDB file path (Default: complex_prediction.pdb)
+- `--save_json`: Save metrics as JSON alongside PDB
+
+Note: `use_initial_guess=True` is always enabled internally (uses target atom positions as structural starting point for the AF structure module).
+
 ## MCP Server Installation
 ```shell
 fastmcp install claude-code src/server.py --name afcycdesign_mcp
@@ -245,6 +303,11 @@ Use submit_fixbb_design to redesign the sequence for @examples/structures/1JBL_c
 #### Binder Design
 ```
 Design a 14-residue cyclic peptide binder for the MDM2 target in @examples/structures/4HFZ_MDM2.pdb
+```
+
+#### Complex Structure Prediction
+```
+Predict how the peptide FSDLWKLLPEN binds to the MDM2 target in @examples/structures/4HFZ_MDM2.pdb
 ```
 
 #### Job Management
