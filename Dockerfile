@@ -30,8 +30,15 @@ RUN pip install --no-cache-dir \
 # RDKit
 RUN pip install --no-cache-dir rdkit
 
-# Copy MCP server source
-COPY src/ src/
+# Copy MCP server source and ensure readable when run with --user
+COPY --chmod=755 src/ src/
+
+# Pre-create writable directories for job output when run with --user
+RUN mkdir -p /app/jobs /app/results && chmod 777 /app /app/jobs /app/results
+
+# Unset NVIDIA_CUDA_END_OF_LIFE which causes the NVIDIA container runtime
+# to corrupt CMD when combined with --ipc=host + --user flags
+ENV NVIDIA_CUDA_END_OF_LIFE=0
 
 # Override NVIDIA entrypoint which prints a banner to stdout,
 # corrupting the JSON-RPC stdio stream used by MCP
