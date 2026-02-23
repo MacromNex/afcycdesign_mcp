@@ -33,4 +33,7 @@ RUN pip install --no-cache-dir rdkit
 # Copy MCP server source
 COPY src/ src/
 
+# Override NVIDIA entrypoint which prints a banner to stdout,
+# corrupting the JSON-RPC stdio stream used by MCP
+ENTRYPOINT []
 CMD ["python", "src/server.py"]
