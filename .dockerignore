@@ -1,6 +1,7 @@
 env/
 jobs/
 results/
+params/
 __pycache__/
 *.pyc
 .git/

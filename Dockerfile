@@ -27,14 +27,26 @@ RUN pip install --no-cache-dir \
     "jaxlib==0.4.28+cuda12.cudnn89" \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
+# Pin chex and optax versions compatible with JAX 0.4.28
+RUN pip install --no-cache-dir "chex==0.1.86" "optax==0.2.2"
+
 # RDKit
 RUN pip install --no-cache-dir rdkit
 
-# Copy MCP server source and ensure readable when run with --user
+# Copy MCP server source and design scripts
 COPY --chmod=755 src/ src/
+COPY --chmod=755 scripts/ scripts/
 
 # Pre-create writable directories for job output when run with --user
-RUN mkdir -p /app/jobs /app/results && chmod 777 /app /app/jobs /app/results
+# params/ is volume-mounted at runtime (5.3GB AF weights, not baked into image)
+RUN mkdir -p /app/jobs /app/results /app/params /tmp/matplotlib \
+    && chmod 777 /app /app/jobs /app/results /app/params /tmp/matplotlib
+
+# Unbuffered Python output so job logs stream in real-time
+ENV PYTHONUNBUFFERED=1
+
+# Writable matplotlib cache to suppress permission warnings on /.config
+ENV MPLCONFIGDIR=/tmp/matplotlib
 
 # Unset NVIDIA_CUDA_END_OF_LIFE which causes the NVIDIA container runtime
 # to corrupt CMD when combined with --ipc=host + --user flags
