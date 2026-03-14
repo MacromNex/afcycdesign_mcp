@@ -42,6 +42,9 @@ COPY --chmod=755 scripts/ scripts/
 RUN mkdir -p /app/jobs /app/results /app/params /tmp/matplotlib \
     && chmod 777 /app /app/jobs /app/results /app/params /tmp/matplotlib
 
+# Document the external mount point for AF2 model parameters
+VOLUME /app/params
+
 # Unbuffered Python output so job logs stream in real-time
 ENV PYTHONUNBUFFERED=1
 
