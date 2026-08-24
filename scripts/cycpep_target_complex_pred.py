@@ -263,7 +263,7 @@ def predict_complex(pdb_file, peptide_seq, target_chain="A",
     i_pae = metrics.get("i_pae", metrics.get("pae", 1))
     i_con = metrics.get("i_con", 0)
     ptm = metrics.get("pTM", metrics.get("ptm", 0))
-    i_ptm = metrics.get("i_pTM", metrics.get("iptm", 0))
+    i_ptm = metrics.get("i_ptm", metrics.get("i_pTM", metrics.get("iptm", 0)))
 
     # Quality assessment
     high_confidence = plddt > 0.7

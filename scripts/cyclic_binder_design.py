@@ -53,6 +53,7 @@ Usage:
 # ==============================================================================
 import os
 import sys
+import json
 
 # Add examples directory to path for gpu_utils import
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -323,6 +324,28 @@ def design_cyclic_peptide_binder(pdb_file, target_chain="A", binder_len=14,
     # Quality assessment based on paper thresholds
     # iPAE < 0.15 (or 0.11 for strict)
     passes_ipae = i_pae < ipae_threshold
+
+    # Persist metrics alongside the output PDB so they survive the process.
+    # PAE/iPAE are computed but filtered out of the streaming log (unweighted
+    # loss terms), and the RESULTS block is suppressed under --quiet, so this
+    # file is the only durable record of them.
+    metrics_file = os.path.splitext(output_file)[0] + "_metrics.json"
+    try:
+        with open(metrics_file, "w") as mf:
+            json.dump({
+                "plddt": float(plddt),
+                "pae": float(pae),
+                "i_pae": float(i_pae),
+                "i_con": float(i_con),
+                "ptm": float(metrics.get("ptm", 0)),
+                "i_ptm": float(metrics.get("i_ptm", 0)),
+                "loss": float(metrics.get("loss", 0)),
+                "passes_ipae": bool(passes_ipae),
+                "ipae_threshold": float(ipae_threshold),
+            }, mf, indent=2)
+    except (OSError, TypeError, ValueError) as e:
+        print(f"Warning: could not write metrics to {metrics_file}: {e}",
+              file=sys.stderr)
 
     if verbose:
         print(f"\n{'=' * 60}")
