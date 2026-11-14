@@ -161,7 +161,8 @@ def design_cyclic_peptide_binder(pdb_file, target_chain="A", binder_len=14,
                                 target_flexible=False, use_multimer=False,
                                 optimizer="pssm_semigreedy", num_recycles=0,
                                 num_models=2, output_file="cyclic_binder.pdb",
-                                ipae_threshold=0.15, data_dir=None, verbose=True):
+                                ipae_threshold=0.15, data_dir=None, seed=None,
+                                verbose=True):
     """
     Design a cyclic peptide binder for a target protein structure.
 
@@ -266,7 +267,7 @@ def design_cyclic_peptide_binder(pdb_file, target_chain="A", binder_len=14,
     }
 
     # Restart model with initial sequence
-    model.restart(seq=binder_seq)
+    model.restart(seq=binder_seq, seed=seed)
 
     if verbose:
         print(f"Running {optimizer} optimization...")
@@ -372,6 +373,7 @@ def design_cyclic_peptide_binder(pdb_file, target_chain="A", binder_len=14,
     results = {
         "sequences": sequences,
         "pdb_file": output_file,
+        "seed": seed,
         "target_len": model._target_len,
         "binder_len": model._binder_len,
         "pssm": pssm,
@@ -423,6 +425,8 @@ def main():
                        help="Output PDB file (default: cyclic_binder.pdb)")
     parser.add_argument("--ipae_threshold", type=float, default=0.15,
                        help="Interface PAE threshold for quality filtering (default: 0.15, use 0.11 for strict)")
+    parser.add_argument("--seed", type=int, default=None,
+                       help="Random seed for reproducible design (default: unseeded)")
     parser.add_argument("--quiet", action="store_true",
                        help="Suppress verbose output")
 
@@ -468,6 +472,7 @@ def main():
             output_file=args.output,
             ipae_threshold=args.ipae_threshold,
             data_dir=args.data_dir,
+            seed=args.seed,
             verbose=not args.quiet
         )
 

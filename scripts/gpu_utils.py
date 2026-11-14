@@ -124,7 +124,7 @@ def check_gpu_env_and_reexec():
 
 
 def configure_gpu(gpu_id: int = None, mem_fraction: float = None,
-                  preallocate: bool = True) -> dict:
+                  preallocate: bool = True, cache_dir: str = None) -> dict:
     """
     Configure GPU settings for JAX. Must be called BEFORE importing JAX.
 
@@ -133,6 +133,9 @@ def configure_gpu(gpu_id: int = None, mem_fraction: float = None,
         mem_fraction: Fraction of GPU memory to use (0.0-1.0). None for default.
         preallocate: Whether to preallocate GPU memory (default: True).
                     Set to False for more flexible memory usage.
+        cache_dir: Directory for JAX's persistent XLA compilation cache.
+                    Defaults to $CYCPEP_JAX_CACHE, else /tmp/cycpep_jax_cache.
+                    Set CYCPEP_JAX_CACHE="" to disable caching entirely.
 
     Returns:
         Dict with configuration status and device info.
@@ -163,6 +166,18 @@ def configure_gpu(gpu_id: int = None, mem_fraction: float = None,
         # Disable memory preallocation for more flexible usage
         os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
         config_info["env_vars_set"].append("XLA_PYTHON_CLIENT_PREALLOCATE=false")
+
+    # Persistent XLA compilation cache. Every design in a sweep shares a target
+    # and a binder length, so the compiled kernels are identical from one
+    # process to the next; without this each run rebuilds them from scratch.
+    # Entries are keyed on code, shapes and backend, so a hit returns the same
+    # executable - numerics and seeded reproducibility are unaffected.
+    if cache_dir is None:
+        cache_dir = os.environ.get("CYCPEP_JAX_CACHE", "/tmp/cycpep_jax_cache")
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+        os.environ.setdefault("JAX_COMPILATION_CACHE_DIR", cache_dir)
+        config_info["env_vars_set"].append(f"JAX_COMPILATION_CACHE_DIR={cache_dir}")
 
     return config_info
 
@@ -196,7 +211,8 @@ def get_device_info() -> dict:
 
 
 def setup_gpu_environment(gpu_id: int = None, mem_fraction: float = None,
-                          preallocate: bool = True, verbose: bool = False):
+                          preallocate: bool = True, verbose: bool = False,
+                          cache_dir: str = None):
     """
     Complete GPU environment setup. Call this at the TOP of your script,
     BEFORE importing JAX or any JAX-dependent libraries.
@@ -220,7 +236,7 @@ def setup_gpu_environment(gpu_id: int = None, mem_fraction: float = None,
     check_gpu_env_and_reexec()
 
     # Configure GPU settings
-    config = configure_gpu(gpu_id, mem_fraction, preallocate)
+    config = configure_gpu(gpu_id, mem_fraction, preallocate, cache_dir)
 
     if verbose:
         print("GPU Configuration:")

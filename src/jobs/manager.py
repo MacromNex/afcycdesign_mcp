@@ -189,9 +189,12 @@ class JobManager:
                     else:
                         cmd.extend([f"--{key}", str_value])
 
-            # Set output paths if output is specified in args
-            output_file = args.get("output") or str(job_dir / "output.pdb")
-            if "output" not in args:
+            # Set output paths if output is specified in args.
+            # Batch scripts take --output_dir instead and have no --output flag,
+            # so never inject one when the caller already chose a directory.
+            output_file = (args.get("output") or args.get("output_dir")
+                           or str(job_dir / "output.pdb"))
+            if "output" not in args and "output_dir" not in args:
                 cmd.extend(["--output", output_file])
 
             logger.info(f"Running job {job_id}: {' '.join(cmd)}")
